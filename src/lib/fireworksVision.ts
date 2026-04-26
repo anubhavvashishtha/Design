@@ -4,7 +4,7 @@
  */
 
 const FIREWORKS_URL = "https://api.fireworks.ai/inference/v1/chat/completions";
-const FIREWORKS_MODEL = "accounts/fireworks/models/kimi-k2p6";
+const FIREWORKS_MODEL = "accounts/fireworks/models/qwen3-vl-30b-a3b-instruct";
 
 /** Convert a File or public-asset URL to a base64 data-URI. */
 async function toDataUri(source: File | string): Promise<string> {
@@ -44,15 +44,15 @@ function imageBlock(uri: string) {
  * @param apiKey   Fireworks API key
  * @param image1   First image (File | public path | http URL)
  * @param image2   Second image (File | public path | http URL)
- * @param aspect   The question to ask
- * @returns        Confidence score as a number between 0 and 100
+ * @param aspect   The question to ask (should elicit "Yes" or "No")
+ * @returns        Model response string ("Yes" / "No")
  */
 export async function compareImages(
   apiKey: string,
   image1: File | string,
   image2: File | string,
   aspect: string = "Do these two images show the same weave pattern?"
-): Promise<number> {
+): Promise<string> {
   const [uri1, uri2] = await Promise.all([toDataUri(image1), toDataUri(image2)]);
 
   const response = await fetch(FIREWORKS_URL, {
@@ -64,12 +64,16 @@ export async function compareImages(
     },
     body: JSON.stringify({
       model: FIREWORKS_MODEL,
-      max_tokens: 2480,
-      temperature: 0.4,
+      max_tokens: 3276,
+      top_p: 1,
+      top_k: 40,
+      presence_penalty: 0,
+      frequency_penalty: 0,
+      temperature: 0.6,
       messages: [
         {
           role: "system",
-          content: "You are a textile weave analysis expert. Your ONLY task is to compare two images and estimate the probability that they show the same weave pattern. Never provide explanations or descriptions. Answer with exactly one integer between 0 and 100 representing your confidence percentage."
+          content: "You are a textile weave analysis expert. Your ONLY task is to compare two images and answer 'Yes' if they show the same weave pattern, or 'No' if they do not. Never provide explanations or descriptions. Answer with exactly one word: 'Yes' or 'No'."
         },
         {
           role: "user",
@@ -82,8 +86,7 @@ export async function compareImages(
             },
           ],
         },
-      ],
-      "thinking": {"type": "disabled"}
+      ]
     }),
   });
 
@@ -92,13 +95,6 @@ export async function compareImages(
   }
 
   const data = await response.json();
-  const content = (data.choices[0].message.content as string).trim();
-  console.log("Agent Response:", content);
-  
-  const match = content.match(/\d+/);
-  if (match) {
-    const score = parseInt(match[0], 10);
-    return Math.min(Math.max(score, 0), 100);
-  }
-  return 0;
+  console.log("Agent Response:", data.choices[0].message.content);
+  return (data.choices[0].message.content as string).trim();
 }
