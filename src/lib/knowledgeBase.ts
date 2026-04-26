@@ -22,9 +22,9 @@ export const KNOWLEDGE_BASE: KnowledgeBaseEntry[] = [
       "/knowledgebase/plain-weave/WhatsApp Image 2026-04-26 at 22.50.58 (1).jpeg",
   },
   {
-    name: "Satin Weave",
+    name: "Herringbone",
     imagePath:
-      "/knowledgebase/satin/WhatsApp Image 2026-04-26 at 22.58.04.jpeg",
+      "/knowledgebase/Herringbone/WhatsApp Image 2026-04-27 at 1.33.56 AM.jpeg",
   },
   {
     name: "Twill Weave",

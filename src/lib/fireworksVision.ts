@@ -15,6 +15,9 @@ async function toDataUri(source: File | string): Promise<string> {
     }
     // Treat as a public-folder path (e.g. "/knowledgebase/twill/image.jpeg")
     const res = await fetch(source);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch image asset: ${source} (Status: ${res.status})`);
+    }
     const blob = await res.blob();
     return blobToDataUri(blob);
   }
