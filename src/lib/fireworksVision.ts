@@ -80,6 +80,7 @@ export async function compareImages(
           ],
         },
       ],
+      "thinking": {"type": "disabled"}
     }),
   });
 
