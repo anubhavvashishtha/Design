@@ -44,15 +44,15 @@ function imageBlock(uri: string) {
  * @param apiKey   Fireworks API key
  * @param image1   First image (File | public path | http URL)
  * @param image2   Second image (File | public path | http URL)
- * @param aspect   The question to ask (should elicit "Yes" or "No")
- * @returns        Model response string ("Yes" / "No")
+ * @param aspect   The question to ask
+ * @returns        Confidence score as a number between 0 and 100
  */
 export async function compareImages(
   apiKey: string,
   image1: File | string,
   image2: File | string,
-  aspect: string = "Do these two images show the same weave pattern?"
-): Promise<string> {
+  aspect: string = "Rate the visual similarity of the weave patterns in these two images on a scale from 0 to 100."
+): Promise<number> {
   const [uri1, uri2] = await Promise.all([toDataUri(image1), toDataUri(image2)]);
 
   const response = await fetch(FIREWORKS_URL, {
@@ -73,7 +73,7 @@ export async function compareImages(
       messages: [
         {
           role: "system",
-          content: "You are a textile weave analysis expert. Your ONLY task is to compare two images and answer 'Yes' if they show the same weave pattern, or 'No' if they do not. Never provide explanations or descriptions. Answer with exactly one word: 'Yes' or 'No'."
+          content: "You are a textile weave analysis expert. Your ONLY task is to compare two images and provide a similarity score for their weave patterns. Never provide explanations, descriptions, or any text other than the number. Output EXACTLY one integer between 0 and 100 representing the similarity score."
         },
         {
           role: "user",
@@ -95,6 +95,13 @@ export async function compareImages(
   }
 
   const data = await response.json();
-  console.log("Agent Response:", data.choices[0].message.content);
-  return (data.choices[0].message.content as string).trim();
+  const content = (data.choices[0].message.content as string).trim();
+  console.log("Agent Response:", content);
+  
+  const match = content.match(/\d+/);
+  if (match) {
+    const score = parseInt(match[0], 10);
+    return Math.min(Math.max(score, 0), 100);
+  }
+  return 0;
 }

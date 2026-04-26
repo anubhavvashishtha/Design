@@ -19,41 +19,36 @@ const Index = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [fileName, setFileName] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [pattern, setPattern] = useState<string | null>(null);
+  const [results, setResults] = useState<{ name: string; confidence: number }[]>([]);
   const [checkedCount, setCheckedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   /** Run the vision comparison against every knowledgebase entry in order. */
   async function identifyPattern(file: File) {
     setIsAnalyzing(true);
-    setPattern(null);
+    setResults([]);
     setError(null);
     setCheckedCount(0);
+
+    const newResults: { name: string; confidence: number }[] = [];
 
     try {
       for (let i = 0; i < KNOWLEDGE_BASE.length; i++) {
         const entry = KNOWLEDGE_BASE[i];
         setCheckedCount(i + 1);
 
-        const answer = await compareImages(
+        const score = await compareImages(
           API_KEY,
           file,
-          entry.imagePath,
-          "Do these two images show the same weave pattern?"
+          entry.imagePath
         );
 
-        console.log(`Checking pattern: ${entry.name} - Agent Response: ${answer}`);
-
-        if (answer.toLowerCase().startsWith("yes")) {
-          console.log(`Match found: ${entry.name}`);
-          setPattern(entry.name);
-          return;
-        }
+        console.log(`Checking pattern: ${entry.name} - Similarity: ${score}%`);
+        newResults.push({ name: entry.name, confidence: score });
       }
 
-      console.log("No match found in knowledge base.");
-      // No match found
-      setPattern("Unknown Pattern");
+      newResults.sort((a, b) => b.confidence - a.confidence);
+      setResults(newResults);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
@@ -69,14 +64,14 @@ const Index = () => {
     setImageFile(file);
     setImageUrl(URL.createObjectURL(file));
     setFileName(file.name);
-    setPattern(null);
+    setResults([]);
     setError(null);
     identifyPattern(file);
   };
 
   const progressPct = isAnalyzing
     ? Math.round((checkedCount / KNOWLEDGE_BASE.length) * 100)
-    : pattern
+    : results.length > 0
     ? 100
     : 0;
 
@@ -125,19 +120,16 @@ const Index = () => {
             </p>
             <div className="flex flex-wrap gap-2">
               {KNOWLEDGE_BASE.map((entry) => {
-                const isMatch = pattern === entry.name;
-                const isChecked =
-                  !isAnalyzing &&
-                  pattern !== null &&
-                  KNOWLEDGE_BASE.findIndex((e) => e.name === entry.name) <
-                    KNOWLEDGE_BASE.findIndex((e) => e.name === pattern);
+                const result = results.find(r => r.name === entry.name);
+                const isTopMatch = results.length > 0 && results[0].name === entry.name && results[0].confidence > 50;
+                const isChecked = isAnalyzing && KNOWLEDGE_BASE.findIndex((e) => e.name === entry.name) < checkedCount;
                 return (
                   <span
                     key={entry.name}
                     className={`border px-3 py-1 text-sm font-semibold transition-colors ${
-                      isMatch
+                      isTopMatch
                         ? "border-primary bg-primary text-primary-foreground"
-                        : isChecked
+                        : isChecked || result
                         ? "border-border bg-linen text-muted-foreground line-through"
                         : "border-border bg-linen text-ink-soft"
                     }`}
@@ -236,16 +228,33 @@ const Index = () => {
                           {error}
                         </p>
                       </div>
-                    ) : pattern ? (
+                    ) : results.length > 0 ? (
                       <div className="space-y-4">
-                        <CheckCircle2 className="h-9 w-9 text-accent" />
-                        <div>
+                        <div className="flex items-center gap-3">
+                          <CheckCircle2 className="h-6 w-6 text-accent" />
                           <p className="text-sm uppercase tracking-[0.22em] text-primary-foreground/70">
-                            Pattern name
+                            Analysis Complete
                           </p>
-                          <h2 className="mt-3 text-4xl font-black leading-tight">
-                            {pattern}
-                          </h2>
+                        </div>
+                        <div className="space-y-4 mt-4">
+                          {results.map((res, idx) => (
+                            <div key={res.name} className="space-y-1">
+                              <div className="flex justify-between items-center text-sm">
+                                <span className={idx === 0 && res.confidence > 50 ? "font-bold text-lg" : "font-medium"}>
+                                  {res.name}
+                                </span>
+                                <span className="font-mono">{res.confidence}%</span>
+                              </div>
+                              <div className="h-2 w-full bg-primary-foreground/20 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-1000 ${
+                                    idx === 0 && res.confidence > 50 ? "bg-accent" : "bg-primary-foreground/60"
+                                  }`}
+                                  style={{ width: `${res.confidence}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ) : (
@@ -263,7 +272,7 @@ const Index = () => {
                 <div className="mt-8 border border-primary-foreground/25 bg-primary-foreground/10 p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-primary-foreground/70">
-                      {isAnalyzing ? "Analysing…" : pattern ? "Complete" : "Awaiting upload"}
+                      {isAnalyzing ? "Analysing…" : results.length > 0 ? "Complete" : "Awaiting upload"}
                     </p>
                     <p className="text-sm font-bold">{progressPct}%</p>
                   </div>
