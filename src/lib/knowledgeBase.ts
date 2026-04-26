@@ -31,9 +31,4 @@ export const KNOWLEDGE_BASE: KnowledgeBaseEntry[] = [
     imagePath:
       "/knowledgebase/twill/WhatsApp Image 2026-04-26 at 22.51.53.jpeg",
   },
-  {
-    name: "Satin Weave",
-    imagePath:
-      "/knowledgebase/satin/WhatsApp Image 2026-04-27 at 2.22.39 AM.jpeg",
-  },
 ];
