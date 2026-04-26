@@ -61,7 +61,7 @@ export async function compareImages(
     },
     body: JSON.stringify({
       model: FIREWORKS_MODEL,
-      max_tokens: 248,
+      max_tokens: 2480,
       temperature: 0.0,
       messages: [
         {
